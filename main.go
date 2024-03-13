@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type Lotto struct {
@@ -28,12 +31,40 @@ type Lotto struct {
 const GetLottoNumberUrl string = "https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo="
 const MainUrl string = "https://dhlottery.co.kr/common.do?method=main"
 
+var lottoMap = make(map[int]int)
+
 func main() {
-	l, err := getLottoNumberByRound(100)
-	if err != nil {
-		panic(err)
+	step1()
+	fmt.Println("====")
+	for k, v := range lottoMap {
+		fmt.Println(k, ":", v)
 	}
-	fmt.Println(l)
+	fmt.Println("====")
+}
+
+func step1() error {
+	r, err := getLatestRound()
+	if err != nil {
+		return err
+	}
+
+	for i := 1; i <= r; i++ {
+		l, err := getLottoNumberByRound(i)
+		if err != nil {
+			return err
+		}
+		setLottoMap(l)
+	}
+	return nil
+}
+
+func setLottoMap(l Lotto) {
+	lottoMap[l.DrwtNo1] = lottoMap[l.DrwtNo1] + 1
+	lottoMap[l.DrwtNo2] = lottoMap[l.DrwtNo2] + 1
+	lottoMap[l.DrwtNo3] = lottoMap[l.DrwtNo3] + 1
+	lottoMap[l.DrwtNo4] = lottoMap[l.DrwtNo4] + 1
+	lottoMap[l.DrwtNo5] = lottoMap[l.DrwtNo5] + 1
+	lottoMap[l.DrwtNo6] = lottoMap[l.DrwtNo6] + 1
 }
 
 func getLottoNumberByRound(round int) (Lotto, error) {
@@ -56,4 +87,24 @@ func getLottoNumberByRound(round int) (Lotto, error) {
 		return Lotto{}, err
 	}
 	return lotto, nil
+}
+
+func getLatestRound() (int, error) {
+	resp, err := http.Get(MainUrl)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	html, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	round, err := strconv.Atoi(html.Find("#lottoDrwNo").Text())
+	if err != nil {
+		return 0, err
+	}
+
+	return round, nil
 }
