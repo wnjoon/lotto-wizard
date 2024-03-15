@@ -7,10 +7,10 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func Write(r int) {
+func Write(round int) error {
 	f, err := excelize.OpenFile("lotto.xlsx")
 	if err != nil {
-		//
+		return err
 	}
 	defer func() {
 		// Close the spreadsheet.
@@ -18,24 +18,31 @@ func Write(r int) {
 			fmt.Println(err)
 		}
 	}()
-	cell, err := f.GetCellValue("Lotto", fmt.Sprint("A", strconv.FormatInt(int64(r+1), 10)))
-	if err != nil {
-		// fmt.Println("No Cell is available")
-		return
-	}
-	if cell == "" {
-		fmt.Println("No cell is available")
-	}
-	fmt.Println(cell)
 
-	// f.SetCellValue("Lotto", "A2", "Hello world.")
-	// f.SetCellValue("Sheet1", "B2", 100)
-	// // Set active sheet of the workbook.
-	// f.SetActiveSheet(index)
-	// // Save spreadsheet by the given path.
-	// if err := f.SaveAs("Book1.xlsx"); err != nil {
-	// 	fmt.Println(err)
+	// cell, err := f.GetCellValue("Lotto", fmt.Sprint("A", stringfy(round+1)))
+	// if err != nil {
+	// 	return err
 	// }
+
+	// if cell == fmt.Sprint("A", stringfy(round)) {
+	// 	return errors.New("round is already inserted")
+	// }
+
+	lotto, err := getLottoNumberByRound(round)
+	if err != nil {
+		return err
+	}
+
+	f.SetCellValue("Lotto", fmt.Sprint("A", stringfy(round+1)), round)
+	f.SetCellValue("Lotto", fmt.Sprint("B", stringfy(round+1)), lotto.DrwtNo1)
+	f.SetCellValue("Lotto", fmt.Sprint("C", stringfy(round+1)), lotto.DrwtNo2)
+	f.SetCellValue("Lotto", fmt.Sprint("D", stringfy(round+1)), lotto.DrwtNo3)
+	f.SetCellValue("Lotto", fmt.Sprint("E", stringfy(round+1)), lotto.DrwtNo4)
+	f.SetCellValue("Lotto", fmt.Sprint("F", stringfy(round+1)), lotto.DrwtNo5)
+	f.SetCellValue("Lotto", fmt.Sprint("G", stringfy(round+1)), lotto.DrwtNo6)
+	f.SetCellValue("Lotto", fmt.Sprint("H", stringfy(round+1)), lotto.BnusNo)
+
+	return nil
 }
 
 func Read() (map[int]int, error) {
@@ -53,6 +60,31 @@ func Read() (map[int]int, error) {
 
 	lottoMap := make(map[int]int)
 
+	round, err := getLatestRoundNumber()
+	if err != nil {
+		return nil, err
+	}
+
+	// if len(rows) <= round {
+	// err = Write(round)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// }
+	lotto, err := getLottoNumberByRound(round)
+	if err != nil {
+		return nil, err
+	}
+
+	f.SetCellValue("Lotto", fmt.Sprint("A", stringfy(round+1)), round)
+	f.SetCellValue("Lotto", fmt.Sprint("B", stringfy(round+1)), lotto.DrwtNo1)
+	f.SetCellValue("Lotto", fmt.Sprint("C", stringfy(round+1)), lotto.DrwtNo2)
+	f.SetCellValue("Lotto", fmt.Sprint("D", stringfy(round+1)), lotto.DrwtNo3)
+	f.SetCellValue("Lotto", fmt.Sprint("E", stringfy(round+1)), lotto.DrwtNo4)
+	f.SetCellValue("Lotto", fmt.Sprint("F", stringfy(round+1)), lotto.DrwtNo5)
+	f.SetCellValue("Lotto", fmt.Sprint("G", stringfy(round+1)), lotto.DrwtNo6)
+	f.SetCellValue("Lotto", fmt.Sprint("H", stringfy(round+1)), lotto.BnusNo)
+
 	rows, err := f.GetRows("Lotto")
 	if err != nil {
 		return nil, err
@@ -68,4 +100,8 @@ func Read() (map[int]int, error) {
 		}
 	}
 	return lottoMap, nil
+}
+
+func stringfy(n int) string {
+	return strconv.FormatInt(int64(n), 10)
 }

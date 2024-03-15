@@ -14,7 +14,6 @@ var LottoNumberMap = make(map[int]int)
 
 func main() {
 
-	// lottowizard.Write(1111)
 	l, err := lottowizard.Read()
 	if err != nil {
 		panic(err)

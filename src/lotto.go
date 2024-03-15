@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -29,10 +30,10 @@ type Lotto struct {
 	DrwtNo1        int    `json:"drwtNo1"`
 }
 
-var lottoCountMap = make(map[int]int)
+var lottoCountMap map[int]int
 
 // 가장 최근에 진행된 로또 회차번호 조회
-func GetLatestRoundNumber() (int, error) {
+func getLatestRoundNumber() (int, error) {
 	resp, err := http.Get("https://dhlottery.co.kr/common.do?method=main")
 	if err != nil {
 		return 0, err
@@ -53,7 +54,7 @@ func GetLatestRoundNumber() (int, error) {
 }
 
 // 해당 회차의 로또 당첨 내역 조회
-func GetLottoNumberByRound(round int) (Lotto, error) {
+func getLottoNumberByRound(round int) (Lotto, error) {
 
 	resp, err := http.Get(fmt.Sprint("https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=", strconv.FormatInt(int64(round), 10)))
 	if err != nil {
@@ -75,25 +76,44 @@ func GetLottoNumberByRound(round int) (Lotto, error) {
 	return lotto, nil
 }
 
-func SearchLottoHistory(latestRound int) (map[int]int, error) {
+func GetLottoList() (map[int]int, error) {
+
+	latestRound, err := getLatestRoundNumber()
+	if err != nil {
+		return nil, err
+	}
+
+	lottoCountMap = make(map[int]int)
+
 	var wg sync.WaitGroup
 	wg.Add(latestRound)
 
 	for i := 1; i <= latestRound; i++ {
-		lotto, err := GetLottoNumberByRound(i)
-		if err != nil {
-			log.Println("get", i, "is errored")
+		defer wg.Done()
+		go func(i int) {
+			l, err := getLottoNumberByRound(i)
+			if err != nil {
+				log.Panic(i, "th round : failed to get from url")
+
+			}
+			fmt.Print(i, "th round : success to get from url")
+			lottoCountMap[l.DrwtNo1] = lottoCountMap[l.DrwtNo1] + 1
+			lottoCountMap[l.DrwtNo2] = lottoCountMap[l.DrwtNo2] + 1
+			lottoCountMap[l.DrwtNo3] = lottoCountMap[l.DrwtNo3] + 1
+			lottoCountMap[l.DrwtNo4] = lottoCountMap[l.DrwtNo4] + 1
+			lottoCountMap[l.DrwtNo5] = lottoCountMap[l.DrwtNo5] + 1
+			lottoCountMap[l.DrwtNo6] = lottoCountMap[l.DrwtNo6] + 1
+		}(i)
+	}
+	wg.Wait()
+
+	for {
+		if len(lottoCountMap) == latestRound {
+			break
 		}
-		setLottoCountMap(lotto)
+		fmt.Println(lottoCountMap)
+		time.Sleep(2000)
+
 	}
 	return lottoCountMap, nil
-}
-
-func setLottoCountMap(l Lotto) {
-	lottoCountMap[l.DrwtNo1] = lottoCountMap[l.DrwtNo1] + 1
-	lottoCountMap[l.DrwtNo2] = lottoCountMap[l.DrwtNo2] + 1
-	lottoCountMap[l.DrwtNo3] = lottoCountMap[l.DrwtNo3] + 1
-	lottoCountMap[l.DrwtNo4] = lottoCountMap[l.DrwtNo4] + 1
-	lottoCountMap[l.DrwtNo5] = lottoCountMap[l.DrwtNo5] + 1
-	lottoCountMap[l.DrwtNo6] = lottoCountMap[l.DrwtNo6] + 1
 }
